@@ -165,9 +165,9 @@ func main() {
 		i18n.M{"{count}": 50},
 	)
 
-	log.Println(errAdvanced.T(tr)) // Returns string "Connections limit is 50"
+	log.Println(errAdvanced.Tf(tr)) // Returns string "Connections limit is 50"
 
-	log.Println(errAdvanced.ErrT(tr)) // Returns error "Connections limit is 50"
+	log.Println(errAdvanced.ErrTf(tr)) // Returns error "Connections limit is 50"
 }
 
 ```
