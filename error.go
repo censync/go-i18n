@@ -53,6 +53,8 @@ func NewErrWithCode(code int, section string, key string, values ...M) *I18nErro
 
 }
 
+// Error setters
+
 // Set status code
 // For example:  err.SetCode(http.StatusBadRequest)
 func (e *I18nError) SetCode(code int) {
@@ -74,6 +76,34 @@ func (e *I18nError) SetValues(values M) {
 	e.values = values
 }
 
+// Error builders
+
+// Return error with status code
+func (e *I18nError) WithCode(code int) *I18nError {
+	e.code = code
+	return e
+}
+
+// Return error with translatorsCollection section
+func (e *I18nError) WithSection(section string) *I18nError {
+	e.section = section
+	return e
+}
+
+// Return error with translatorsCollection key
+func (e *I18nError) WithKey(key string) *I18nError {
+	e.key = key
+	return e
+}
+
+// Return error with values for formatted output
+func (e *I18nError) WithValues(values M) *I18nError {
+	e.values = values
+	return e
+}
+
+// Error getters
+
 // Return status code
 func (e *I18nError) Code() int {
 	return e.code
@@ -93,6 +123,8 @@ func (e *I18nError) Key() string {
 func (e *I18nError) Values() string {
 	return e.key
 }
+
+// Error translator functions
 
 // Return translated string from I18nError
 func (e *I18nError) T(tr *Translator) string {
