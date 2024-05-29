@@ -12,13 +12,13 @@ import (
 
 const dictExtension = "json"
 
-// "key" => "translation"
+// DictionaryEntry "key" => "translation"
 type DictionaryEntry map[string]string
 
-// "section" => "key" => "translation"
+// Dictionary "section" => "key" => "translation"
 type Dictionary map[string]DictionaryEntry
 
-// "locale" => "section" => "key" => "translation"
+// DictionaryCollection "locale" => "section" => "key" => "translation"
 type DictionaryCollection map[string]Dictionary
 
 type M map[string]interface{}
@@ -37,41 +37,40 @@ var (
 // Where file name is translation name:
 // "en_US" =>"en_US.json", "cz" => "cz.json"
 //
-//	Sample translatorsCollection structure:
+//		Sample translatorsCollection structure:
 //
-// 	{
-//		"en_US": {
-//			"errors": {
-//				"unknown": "Unknown error"
+//		{
+//			"en_US": {
+//				"errors": {
+//					"unknown": "Unknown error"
+//				},
+//				"errors.connections": {
+//					"connections_limit": "Connections limit is {count}"
+//				},
+//				"form.signup": {
+//					"welcome": "Welcome to registration"
+//	             "disabled": "Registration is temporarily unavailable"
+//				},
+//				"form.login": {
+//					"title": "Hello, {name}"
+//				}
 //			},
-//			"errors.connections": {
-//				"connections_limit": "Connections limit is {count}"
-//			},
-//			"form.signup": {
-//				"welcome": "Welcome to registration"
-//              "disabled": "Registration is temporarily unavailable"
-//			},
-//			"form.login": {
-//				"title": "Hello, {name}"
-//			}
-//		},
-//		"cs_CZ": {
-//			"errors": {
-//				"unknown": "Neznámá chyba"
-//			},
-//			"errors.connections": {
-//				"connections_limit": "Limit připojení je {count}"
-//			},
-//			"form.signup": {
-//				"welcome": "Vítejte v registraci"
-//              "disabled": "Registrace je dočasně nedostupná"
-//			},
-//			"form.login": {
-//				"title": "Ahoj, {name}"
+//			"cs_CZ": {
+//				"errors": {
+//					"unknown": "Neznámá chyba"
+//				},
+//				"errors.connections": {
+//					"connections_limit": "Limit připojení je {count}"
+//				},
+//				"form.signup": {
+//					"welcome": "Vítejte v registraci"
+//	             "disabled": "Registrace je dočasně nedostupná"
+//				},
+//				"form.login": {
+//					"title": "Ahoj, {name}"
+//				}
 //			}
 //		}
-//	}
-//
 func InitFromDir(defaultLocale, translationsPath string, locales ...string) error {
 	defLocale = defaultLocale
 	if len(locales) > 0 {
@@ -89,7 +88,7 @@ func InitFromDir(defaultLocale, translationsPath string, locales ...string) erro
 		}
 		tmp := make(Dictionary)
 		err = json.NewDecoder(file).Decode(&tmp)
-		file.Close()
+		_ = file.Close()
 		if err != nil {
 			return err
 		}
@@ -109,6 +108,7 @@ func InitFromDir(defaultLocale, translationsPath string, locales ...string) erro
 // Initialize translator with DictionaryCollection structure
 //
 // For example:
+//
 //	collection := i18n.DictionaryCollection{
 //		"en" : i18n.DictionaryEntry{
 //			"key" : "value",
@@ -145,7 +145,7 @@ func Init(defaultLocale string, dictCollection DictionaryCollection, locales ...
 	return nil
 }
 
-// Return available locales for dictionaries collection
+// getLocales Returns available locales for dictionaries collection
 func (c *DictionaryCollection) getLocales() (locales []string) {
 	if c != nil {
 		for locale := range *c {
@@ -155,7 +155,7 @@ func (c *DictionaryCollection) getLocales() (locales []string) {
 	return
 }
 
-// Return available locales for dictionary
+// getFilesFromDir Returns available locales for dictionary
 func getFilesFromDir(path string) (locales []string) {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
@@ -173,8 +173,8 @@ func getFilesFromDir(path string) (locales []string) {
 	return
 }
 
-// Return Translator instance, if `locale` translatorsCollection exists.
-// If translatorsCollection not exists, return translatorsCollection for default locale.
+// New Returns Translator instance, if `locale` translatorsCollection exists.
+// If translatorsCollection does not exist, returns translatorsCollection for default locale.
 func New(locale string) *Translator {
 	if translatorsCollection == nil {
 		panic("translator not initialized")
@@ -190,17 +190,17 @@ func New(locale string) *Translator {
 	}
 }
 
-// Return loaded locales
+// AvailableLocales Returns loaded locales
 func AvailableLocales() []string {
 	return availableLocales
 }
 
-// Return configured default locale
+// DefaultLocale Returns configured default locale
 func DefaultLocale() string {
 	return defLocale
 }
 
-// Return translated string
+// T Returns translated string
 func (tr *Translator) T(section string, key string) string {
 	if _, ok := tr.localeDictionary[section]; ok {
 		if tr, ok := tr.localeDictionary[section][key]; ok {
@@ -213,7 +213,7 @@ func (tr *Translator) T(section string, key string) string {
 	}
 }
 
-// Return translated formatted string
+// Tf Returns translated formatted string
 func (tr *Translator) Tf(section string, key string, values M) string {
 	if tr, ok := tr.localeDictionary[section][key]; ok {
 		for key, value := range values {
@@ -232,12 +232,12 @@ func (tr *Translator) Tf(section string, key string, values M) string {
 	}
 }
 
-// Return translated error
+// ErrT Returns translated error
 func (tr *Translator) ErrT(section string, key string) error {
 	return errors.New(tr.T(section, key))
 }
 
-// Return translated formatted error
+// ErrTf Returns translated formatted error
 func (tr *Translator) ErrTf(section string, key string, values M) error {
 	return errors.New(tr.Tf(section, key, values))
 }
