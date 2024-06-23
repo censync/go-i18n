@@ -50,7 +50,7 @@ func main() {
 	userLang, _ := os.LookupEnv("LANG")
 
 	// Get translator for locale
-	tr := i18n.New(userLang)
+	tr := i18n.Get(userLang)
 
 	// Creating simple string
 	//
@@ -150,7 +150,7 @@ func main() {
 	userLang, _ := os.LookupEnv("LANG")
 
 	// Get translator for locale
-	tr := i18n.New(userLang)
+	tr := i18n.Get(userLang)
 
 	errAdvanced := i18n.NewErr("form.signup", "disabled")
 

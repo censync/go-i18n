@@ -1,6 +1,7 @@
 package i18n
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -18,21 +19,21 @@ func TestNewErr(t *testing.T) {
 			section: "section1",
 			key:     "key1",
 			values:  nil,
-			want:    &I18nError{section: "section1", key: "key1"},
+			want:    &I18nError{baseError: &baseError{section: "section1", key: "key1"}},
 		},
 		{
 			name:    "SingleValue",
 			section: "section2",
 			key:     "key2",
 			values:  []M{{"foo": "bar"}},
-			want:    &I18nError{section: "section2", key: "key2", values: M{"foo": "bar"}},
+			want:    &I18nError{baseError: &baseError{section: "section2", key: "key2", values: M{"foo": "bar"}}},
 		},
 		{
 			name:    "MultipleValues",
 			section: "section3",
 			key:     "key3",
 			values:  []M{{"foo": "bar"}, {"baz": "qux"}},
-			want:    &I18nError{section: "section3", key: "key3", values: M{"foo": "bar"}},
+			want:    &I18nError{baseError: &baseError{section: "section3", key: "key3", values: M{"foo": "bar"}}},
 		},
 	}
 
@@ -60,15 +61,17 @@ func TestNewErrWithCode(t *testing.T) {
 		{
 			"Empty values",
 			args{
-				code:    200,
+				code:    500,
 				section: "test_section",
 				key:     "test_key",
 				values:  []M{},
 			},
 			&I18nError{
-				code:    200,
-				section: "test_section",
-				key:     "test_key",
+				code: 500,
+				baseError: &baseError{
+					section: "test_section",
+					key:     "test_key",
+				},
 			},
 		},
 		{
@@ -80,10 +83,12 @@ func TestNewErrWithCode(t *testing.T) {
 				values:  []M{{"test value key": "test value"}},
 			},
 			&I18nError{
-				code:    400,
-				section: "test_section",
-				key:     "test_error_key",
-				values:  M{"test value key": "test value"},
+				code: 400,
+				baseError: &baseError{
+					section: "test_section",
+					key:     "test_error_key",
+					values:  M{"test value key": "test value"},
+				},
 			},
 		},
 	}
@@ -96,7 +101,7 @@ func TestNewErrWithCode(t *testing.T) {
 	}
 }
 
-func TestI18nError_MarshalJSON(t *testing.T) {
+func TestI18nError_EmptyLocale_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		name    string
 		setErr  func() *I18nError
@@ -108,26 +113,30 @@ func TestI18nError_MarshalJSON(t *testing.T) {
 			setErr: func() *I18nError {
 				return &I18nError{}
 			},
-			want: `"": ""`,
+			want: `null`,
 		},
 		{
 			name: "filled i18n error",
 			setErr: func() *I18nError {
 				return &I18nError{
-					section: "user_section",
-					key:     "error_key",
+					baseError: &baseError{
+						section: "user_section",
+						key:     "error_key",
+					},
 				}
 			},
-			want: `"user_section": "error_key"`,
+			want: `{"user_section":"error_key"}`,
 		},
 		{
 			name: "partial fill i18n error",
 			setErr: func() *I18nError {
 				return &I18nError{
-					section: "user_section",
+					baseError: &baseError{
+						section: "user_section",
+					},
 				}
 			},
-			want: `"user_section": ""`,
+			want: `{"user_section":""}`,
 		},
 	}
 
@@ -135,7 +144,62 @@ func TestI18nError_MarshalJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := tt.setErr()
 
-			got, err := e.MarshalJSON()
+			got, err := json.Marshal(e) // e.MarshalJSON()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("I18nError.MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if gotStr := string(got); gotStr != tt.want {
+				t.Errorf("I18nError.MarshalJSON() = %v, want %v", gotStr, tt.want)
+			}
+		})
+	}
+}
+
+type TestStruct struct {
+	Data  string     `json:"data"`
+	Error *I18nError `json:"error"`
+}
+
+func TestNestedI18nError_EmptyLocale_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		setErr  func() *TestStruct
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "empty nested i18n error",
+			setErr: func() *TestStruct {
+				return &TestStruct{
+					Data:  "test_data",
+					Error: nil,
+				}
+			},
+			want: `{"data":"test_data","error":null}`,
+		},
+		{
+			name: "filled i18n error",
+			setErr: func() *TestStruct {
+				return &TestStruct{
+					Data: "test_data",
+					Error: &I18nError{
+						baseError: &baseError{
+							section: "user_section",
+							key:     "error_key",
+						},
+					},
+				}
+			},
+			want: `{"data":"test_data","error":{"user_section":"error_key"}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := tt.setErr()
+
+			got, err := json.Marshal(e)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("I18nError.MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return

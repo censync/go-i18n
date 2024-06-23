@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 const dictExtension = "json"
@@ -16,23 +16,27 @@ const dictExtension = "json"
 type DictionaryEntry map[string]string
 
 // Dictionary "section" => "key" => "translation"
-type Dictionary map[string]DictionaryEntry
+type Dictionary map[string]*DictionaryEntry
 
 // DictionaryCollection "locale" => "section" => "key" => "translation"
-type DictionaryCollection map[string]Dictionary
+type DictionaryCollection map[string]*Dictionary
 
 type M map[string]interface{}
 
 type Translator struct {
-	localeDictionary Dictionary
+	localeDictionary *Dictionary
 }
 
+type TranslatorCollection map[string]*Translator
+
 var (
+	mu                    sync.RWMutex
 	defLocale             string
 	availableLocales      []string
-	translatorsCollection map[string]*Translator
+	translatorsCollection TranslatorCollection
 )
 
+// InitFromDir
 // Initialize dictionaries from JSON files
 // Where file name is translation name:
 // "en_US" =>"en_US.json", "cz" => "cz.json"
@@ -72,7 +76,10 @@ var (
 //			}
 //		}
 func InitFromDir(defaultLocale, translationsPath string, locales ...string) error {
-	defLocale = defaultLocale
+	mu.Lock()
+	defer mu.Unlock()
+
+	defaultLocale = defaultLocale
 	if len(locales) > 0 {
 		availableLocales = locales
 	} else {
@@ -86,7 +93,7 @@ func InitFromDir(defaultLocale, translationsPath string, locales ...string) erro
 		if err != nil {
 			return err
 		}
-		tmp := make(Dictionary)
+		tmp := &Dictionary{}
 		err = json.NewDecoder(file).Decode(&tmp)
 		_ = file.Close()
 		if err != nil {
@@ -98,28 +105,36 @@ func InitFromDir(defaultLocale, translationsPath string, locales ...string) erro
 		translatorsCollection[locale] = tr
 	}
 
-	if _, ok := translatorsCollection[defLocale]; !ok {
+	if _, ok := translatorsCollection[defaultLocale]; !ok {
 		return errors.New("no dictionary for default language")
 	}
 
 	return nil
 }
 
+// Init
 // Initialize translator with DictionaryCollection structure
 //
 // For example:
 //
 //	collection := i18n.DictionaryCollection{
-//		"en" : i18n.DictionaryEntry{
-//			"key" : "value",
+//		"en": {
+//			"section": {
+//				"key": "value",
+//			},
 //		},
-//		"cz" : i18n.DictionaryEntry{
-//			"key" : "hodnota",
+//		"cz": {
+//			"section": {
+//				"key": "hodnota",
+//			},
 //		},
 //	}
-func Init(defaultLocale string, dictCollection DictionaryCollection, locales ...string) error {
+func Init(defaultLocale string, dictCollection *DictionaryCollection, locales ...string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
 	defLocale = defaultLocale
-	if _, ok := dictCollection[defLocale]; !ok {
+	if _, ok := (*dictCollection)[defaultLocale]; !ok {
 		return errors.New("no dictionary for default language")
 	}
 
@@ -133,9 +148,9 @@ func Init(defaultLocale string, dictCollection DictionaryCollection, locales ...
 		return errors.New("available locales not set")
 	}
 
-	translatorsCollection = make(map[string]*Translator)
+	translatorsCollection = make(TranslatorCollection)
 	for _, locale := range availableLocales {
-		if dict, ok := dictCollection[locale]; ok {
+		if dict, ok := (*dictCollection)[locale]; ok {
 			tr := &Translator{
 				localeDictionary: dict,
 			}
@@ -147,6 +162,9 @@ func Init(defaultLocale string, dictCollection DictionaryCollection, locales ...
 
 // getLocales Returns available locales for dictionaries collection
 func (c *DictionaryCollection) getLocales() (locales []string) {
+	mu.RLock()
+	defer mu.RUnlock()
+
 	if c != nil {
 		for locale := range *c {
 			locales = append(locales, locale)
@@ -157,7 +175,7 @@ func (c *DictionaryCollection) getLocales() (locales []string) {
 
 // getFilesFromDir Returns available locales for dictionary
 func getFilesFromDir(path string) (locales []string) {
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		panic(err)
 	}
@@ -173,9 +191,12 @@ func getFilesFromDir(path string) (locales []string) {
 	return
 }
 
-// New Returns Translator instance, if `locale` translatorsCollection exists.
+// Get Returns Translator instance, if `locale` translatorsCollection exists.
 // If translatorsCollection does not exist, returns translatorsCollection for default locale.
-func New(locale string) *Translator {
+func Get(locale string) *Translator {
+	mu.Lock()
+	defer mu.Unlock()
+
 	if translatorsCollection == nil {
 		panic("translator not initialized")
 	}
@@ -190,21 +211,36 @@ func New(locale string) *Translator {
 	}
 }
 
+// New
+// Deprecated: must be used Get
+func New(locale string) *Translator {
+	return Get(locale)
+}
+
 // AvailableLocales Returns loaded locales
 func AvailableLocales() []string {
+	mu.RLock()
+	defer mu.RUnlock()
+
 	return availableLocales
 }
 
 // DefaultLocale Returns configured default locale
 func DefaultLocale() string {
+	mu.RLock()
+	defer mu.RUnlock()
+
 	return defLocale
 }
 
 // T Returns translated string
 func (tr *Translator) T(section string, key string) string {
-	if _, ok := tr.localeDictionary[section]; ok {
-		if tr, ok := tr.localeDictionary[section][key]; ok {
-			return tr
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if _, ok := (*tr.localeDictionary)[section]; ok {
+		if entry, ok := (*(*tr.localeDictionary)[section])[key]; ok {
+			return entry
 		} else {
 			return section + `.` + key
 		}
@@ -215,7 +251,10 @@ func (tr *Translator) T(section string, key string) string {
 
 // Tf Returns translated formatted string
 func (tr *Translator) Tf(section string, key string, values M) string {
-	if tr, ok := tr.localeDictionary[section][key]; ok {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if tr, ok := (*(*tr.localeDictionary)[section])[key]; ok {
 		for key, value := range values {
 			switch reflect.TypeOf(value).Kind() {
 			case reflect.String:
