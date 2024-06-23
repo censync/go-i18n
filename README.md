@@ -8,6 +8,31 @@ Loading dictionaries from files
 	}
 ```
 
+Loading from map:
+```go
+	collection := DictionaryCollection{
+		"en": {
+			"section.sub_section": {
+				"key": "Translated field",
+			},
+			"fields.errors": {
+				"to_short": "Field too short",
+				"to_long":  "Field too long",
+			},
+		},
+		"cz": {
+			"section.sub_section": {
+				"key": "Přeložené pole",
+			},
+			"fields.errors": {
+				"to_short": "Pole je příliš krátké",
+				"to_long":  "Pole je příliš dlouhé",
+			},
+		},
+	}
+	err := Init(testDefaultLocale, &collection, "en", "cz")
+```
+
 JSON dictionary template
 ```json
 {
