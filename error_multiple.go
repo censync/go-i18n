@@ -96,3 +96,15 @@ func (e *I18nMultipleError) MarshalJSON() ([]byte, error) {
 func (e *I18nMultipleError) HasErrors() bool {
 	return len(e.errors) > 0
 }
+
+func (e *I18nMultipleError) Code() int {
+	return e.code
+}
+
+func (e *I18nMultipleError) Locale() *string {
+	return e.locale
+}
+
+func (e *I18nMultipleError) Errors() map[string]*baseError {
+	return e.errors
+}
