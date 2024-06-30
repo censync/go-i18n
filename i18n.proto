@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+option go_package = "github.com/censync/go-i18n;i18n";
+
+package i18n;
+
+
+message I18nError {
+  string section = 1;
+  string key = 2;
+  map<string, google.protobuf.Any> values = 3;
+  int32 code = 4;
+  string locale = 5;
+}
+
+
+message baseError {
+  string section = 1;
+  string key = 2;
+  map<string, google.protobuf.Any> values = 3;
+}
+
+
+message I18nMultipleError {
+  int32 code = 1;
+  string locale = 2;
+  map<string, baseError> errors = 3;
+}

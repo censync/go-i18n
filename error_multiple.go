@@ -92,3 +92,7 @@ func (e *I18nMultipleError) MarshalJSON() ([]byte, error) {
 
 	return result, nil
 }
+
+func (e *I18nMultipleError) HasErrors() bool {
+	return len(e.errors) > 0
+}
