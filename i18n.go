@@ -260,6 +260,8 @@ func (tr *Translator) Tf(section string, key string, values M) string {
 				tr = strings.Replace(tr, key, fmt.Sprintf("%d", value), -1)
 			case reflect.Float32, reflect.Float64:
 				tr = strings.Replace(tr, key, fmt.Sprintf("%f", value), -1)
+			default:
+				tr = strings.Replace(tr, key, fmt.Sprintf("%v", value), -1)
 			}
 		}
 		return tr
