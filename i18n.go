@@ -256,7 +256,7 @@ func (tr *Translator) Tf(section string, key string, values M) string {
 			switch reflect.TypeOf(value).Kind() {
 			case reflect.String:
 				tr = strings.Replace(tr, key, value.(string), -1)
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 				tr = strings.Replace(tr, key, fmt.Sprintf("%d", value), -1)
 			case reflect.Float32, reflect.Float64:
 				tr = strings.Replace(tr, key, fmt.Sprintf("%f", value), -1)
