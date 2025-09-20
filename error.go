@@ -1,28 +1,62 @@
 package i18n
 
+import "encoding/json"
+
 var (
 	nullJSON = []byte("null")
 )
 
-type baseError struct {
-	section string
-	key     string
-	values  map[string]interface{}
+type BaseError struct {
+	section string                 `json:"s,omitempty"`
+	key     string                 `json:"k,omitempty"`
+	values  map[string]interface{} `json:"v,omitempty"`
+}
+
+func (e *BaseError) Section() string {
+	return e.section
+}
+
+func (e *BaseError) Key() string {
+	return e.key
+}
+
+func (e *BaseError) Values() map[string]interface{} {
+	return e.values
 }
 
 // I18nError Base error type
 type I18nError struct {
-	*baseError
+	*BaseError
 	code   int
 	locale *string
 }
 
-func (e *baseError) MarshalJSON() ([]byte, error) {
+func (e *BaseError) MarshalJSON() ([]byte, error) {
 	if e == nil {
 		return nullJSON, nil
 	}
 
 	return []byte("{\"" + e.section + "\":\"" + e.key + "\"}"), nil
+}
+
+func (e *BaseError) UnmarshalJSON(b []byte) error {
+	var r struct {
+		Section string                 `json:"s,omitempty"`
+		Key     string                 `json:"k,omitempty"`
+		Values  map[string]interface{} `json:"v,omitempty"`
+	}
+	err := json.Unmarshal(b, &r)
+	if err != nil {
+		return err
+	}
+
+	*e = BaseError{
+		section: r.Section,
+		key:     r.Key,
+		values:  r.Values,
+	}
+
+	return nil
 }
 
 func (e *I18nError) MarshalJSON() ([]byte, error) {
@@ -40,7 +74,7 @@ func (e *I18nError) MarshalJSON() ([]byte, error) {
 		return []byte(`"` + trStr + `"`), nil
 	}
 
-	return e.baseError.MarshalJSON()
+	return e.BaseError.MarshalJSON()
 }
 
 // Error Returns concatenated string "section.key"
@@ -56,14 +90,14 @@ func (e *I18nError) Error() string {
 func NewErr(section string, key string, values ...M) *I18nError {
 	if len(values) == 0 {
 		return &I18nError{
-			baseError: &baseError{
+			BaseError: &BaseError{
 				section: section,
 				key:     key,
 			},
 		}
 	} else {
 		return &I18nError{
-			baseError: &baseError{
+			BaseError: &BaseError{
 				section: section,
 				key:     key,
 				values:  values[0],
@@ -78,7 +112,7 @@ func NewErrWithCode(code int, section string, key string, values ...M) *I18nErro
 	if len(values) == 0 {
 		return &I18nError{
 			code: code,
-			baseError: &baseError{
+			BaseError: &BaseError{
 				section: section,
 				key:     key,
 			},
@@ -86,7 +120,7 @@ func NewErrWithCode(code int, section string, key string, values ...M) *I18nErro
 	} else {
 		return &I18nError{
 			code: code,
-			baseError: &baseError{
+			BaseError: &BaseError{
 				section: section,
 				key:     key,
 				values:  values[0],

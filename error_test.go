@@ -19,21 +19,21 @@ func TestNewErr(t *testing.T) {
 			section: "section1",
 			key:     "key1",
 			values:  nil,
-			want:    &I18nError{baseError: &baseError{section: "section1", key: "key1"}},
+			want:    &I18nError{BaseError: &BaseError{section: "section1", key: "key1"}},
 		},
 		{
 			name:    "SingleValue",
 			section: "section2",
 			key:     "key2",
 			values:  []M{{"foo": "bar"}},
-			want:    &I18nError{baseError: &baseError{section: "section2", key: "key2", values: M{"foo": "bar"}}},
+			want:    &I18nError{BaseError: &BaseError{section: "section2", key: "key2", values: M{"foo": "bar"}}},
 		},
 		{
 			name:    "MultipleValues",
 			section: "section3",
 			key:     "key3",
 			values:  []M{{"foo": "bar"}, {"baz": "qux"}},
-			want:    &I18nError{baseError: &baseError{section: "section3", key: "key3", values: M{"foo": "bar"}}},
+			want:    &I18nError{BaseError: &BaseError{section: "section3", key: "key3", values: M{"foo": "bar"}}},
 		},
 	}
 
@@ -68,7 +68,7 @@ func TestNewErrWithCode(t *testing.T) {
 			},
 			&I18nError{
 				code: 500,
-				baseError: &baseError{
+				BaseError: &BaseError{
 					section: "test_section",
 					key:     "test_key",
 				},
@@ -84,7 +84,7 @@ func TestNewErrWithCode(t *testing.T) {
 			},
 			&I18nError{
 				code: 400,
-				baseError: &baseError{
+				BaseError: &BaseError{
 					section: "test_section",
 					key:     "test_error_key",
 					values:  M{"test value key": "test value"},
@@ -96,6 +96,48 @@ func TestNewErrWithCode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := NewErrWithCode(tt.args.code, tt.args.section, tt.args.key, tt.args.values...); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewErrWithCode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBaseError_UnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		jsonStr string
+		want    BaseError
+		wantErr bool
+	}{
+		{
+			name:    "Empty JSON",
+			jsonStr: "{}",
+			want:    BaseError{},
+			wantErr: false,
+		},
+		{
+			name:    "Valid JSON without Values",
+			jsonStr: `{"s":"section","k":"key"}`,
+			want:    BaseError{section: "section", key: "key"},
+			wantErr: false,
+		},
+		{
+			name:    "Invalid JSON",
+			jsonStr: `{"s":"section","v":{"value1":"test","value2":10}`,
+			want:    BaseError{},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var val = &BaseError{}
+			errError := val.UnmarshalJSON([]byte(tt.jsonStr))
+			if (errError != nil) != tt.wantErr {
+				t.Errorf("BaseError.UnmarshalJSON() error = %v, wantErr %v", errError, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(*val, tt.want) {
+				t.Errorf("BaseError.UnmarshalJSON() = %v, want %v", *val, tt.want)
 			}
 		})
 	}
@@ -119,7 +161,7 @@ func TestI18nError_EmptyLocale_MarshalJSON(t *testing.T) {
 			name: "filled i18n error",
 			setErr: func() *I18nError {
 				return &I18nError{
-					baseError: &baseError{
+					BaseError: &BaseError{
 						section: "user_section",
 						key:     "error_key",
 					},
@@ -131,7 +173,7 @@ func TestI18nError_EmptyLocale_MarshalJSON(t *testing.T) {
 			name: "partial fill i18n error",
 			setErr: func() *I18nError {
 				return &I18nError{
-					baseError: &baseError{
+					BaseError: &BaseError{
 						section: "user_section",
 					},
 				}
@@ -184,7 +226,7 @@ func TestNestedI18nError_EmptyLocale_MarshalJSON(t *testing.T) {
 				return &TestStruct{
 					Data: "test_data",
 					Error: &I18nError{
-						baseError: &baseError{
+						BaseError: &BaseError{
 							section: "user_section",
 							key:     "error_key",
 						},

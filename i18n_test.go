@@ -65,7 +65,7 @@ func TestI18nError_WithLocale_MarshalJSON(t *testing.T) {
 				anotherLocale := "cz"
 				return &I18nError{
 					locale: &anotherLocale,
-					baseError: &baseError{
+					BaseError: &BaseError{
 						section: "section.sub_section",
 						key:     "key",
 					},
@@ -116,7 +116,7 @@ func TestI18nMultipleError_WithLocale_MarshalJSON(t *testing.T) {
 			setErr: func() *I18nMultipleError {
 				return &I18nMultipleError{
 					locale: &testDefaultLocale,
-					errors: map[string]*baseError{
+					errors: map[string]*BaseError{
 						"field1": {
 							section: "fields.errors",
 							key:     "to_short",
@@ -131,7 +131,7 @@ func TestI18nMultipleError_WithLocale_MarshalJSON(t *testing.T) {
 			setErr: func() *I18nMultipleError {
 				return &I18nMultipleError{
 					locale: &testDefaultLocale,
-					errors: map[string]*baseError{
+					errors: map[string]*BaseError{
 						"field1": {
 							section: "fields.errors",
 							key:     "to_long",

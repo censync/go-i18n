@@ -162,9 +162,6 @@ func Init(defaultLocale string, dictCollection *DictionaryCollection, locales ..
 
 // getLocales Returns available locales for dictionaries collection
 func (c *DictionaryCollection) getLocales() (locales []string) {
-	mu.RLock()
-	defer mu.RUnlock()
-
 	if c != nil {
 		for locale := range *c {
 			locales = append(locales, locale)

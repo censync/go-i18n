@@ -23,7 +23,7 @@ func TestI18nMultipleError_EmptyLocale_MarshalJSON(t *testing.T) {
 			name: "filled i18n multiple error",
 			setErr: func() *I18nMultipleError {
 				return &I18nMultipleError{
-					errors: map[string]*baseError{
+					errors: map[string]*BaseError{
 						"field1": {
 							section: "user_section1",
 							key:     "error_key1",
@@ -37,7 +37,7 @@ func TestI18nMultipleError_EmptyLocale_MarshalJSON(t *testing.T) {
 			name: "partial fill i18n error",
 			setErr: func() *I18nMultipleError {
 				return &I18nMultipleError{
-					errors: map[string]*baseError{
+					errors: map[string]*BaseError{
 						"field1": {
 							section: "user_section",
 							key:     "error_key",
@@ -93,7 +93,7 @@ func TestNestedI18nMultipleError_EmptyLocale_MarshalJSON(t *testing.T) {
 				return &TestStructMultiple{
 					Data: "test_data",
 					Errors: &I18nMultipleError{
-						errors: map[string]*baseError{
+						errors: map[string]*BaseError{
 							"field1": {
 								section: "user_section1",
 								key:     "error_key1",
