@@ -7,9 +7,9 @@ var (
 )
 
 type I18nMultipleError struct {
-	code   int                   `json:"c,omitempty"`
-	locale *string               `json:"l,omitempty"`
-	errors map[string]*BaseError `json:"e,omitempty"`
+	code   int
+	locale *string
+	errors map[string]*BaseError
 }
 
 func NewMultipleEmptyErr() *I18nMultipleError {
@@ -120,7 +120,7 @@ func (e *I18nMultipleError) AddDefault(section string, key string, values ...M) 
 
 func (e *I18nMultipleError) AddDefaultErr(srcErr error) *I18nMultipleError {
 	mErr, ok := srcErr.(*I18nMultipleError)
-	if !ok {
+	if ok {
 		*e = *mErr
 	} else {
 		e.errors[multipleDefaultErrorField] = &BaseError{
@@ -153,4 +153,35 @@ func (e *I18nMultipleError) Error() string {
 
 func (e *I18nMultipleError) Errors() map[string]*BaseError {
 	return e.errors
+}
+
+func (e *I18nMultipleError) MarshalJSON() ([]byte, error) {
+	if e == nil || len(e.errors) == 0 {
+		return nullJSON, nil
+	}
+
+	result := make(map[string]json.RawMessage, len(e.errors))
+	for field, baseErr := range e.errors {
+		if e.locale != nil && *e.locale != "" {
+			trStr := ""
+			if len(baseErr.values) == 0 {
+				trStr = Get(*e.locale).T(baseErr.section, baseErr.key)
+			} else {
+				trStr = Get(*e.locale).Tf(baseErr.section, baseErr.key, baseErr.values)
+			}
+			b, err := json.Marshal(trStr)
+			if err != nil {
+				return nil, err
+			}
+			result[field] = b
+		} else {
+			b, err := baseErr.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+			result[field] = b
+		}
+	}
+
+	return json.Marshal(result)
 }

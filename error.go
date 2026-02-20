@@ -7,9 +7,9 @@ var (
 )
 
 type BaseError struct {
-	section string                 `json:"s,omitempty"`
-	key     string                 `json:"k,omitempty"`
-	values  map[string]interface{} `json:"v,omitempty"`
+	section string
+	key     string
+	values  map[string]interface{}
 }
 
 func (e *BaseError) Section() string {
@@ -36,7 +36,8 @@ func (e *BaseError) MarshalJSON() ([]byte, error) {
 		return nullJSON, nil
 	}
 
-	return []byte("{\"" + e.section + "\":\"" + e.key + "\"}"), nil
+	result := map[string]string{e.section: e.key}
+	return json.Marshal(result)
 }
 
 func (e *BaseError) UnmarshalJSON(b []byte) error {
@@ -71,7 +72,11 @@ func (e *I18nError) MarshalJSON() ([]byte, error) {
 		} else {
 			trStr = Get(*e.locale).Tf(e.section, e.key, e.values)
 		}
-		return []byte(`"` + trStr + `"`), nil
+		b, err := json.Marshal(trStr)
+		if err != nil {
+			return nil, err
+		}
+		return b, nil
 	}
 
 	return e.BaseError.MarshalJSON()
@@ -207,8 +212,8 @@ func (e *I18nError) Key() string {
 }
 
 // Values Returns values for formatted output
-func (e *I18nError) Values() string {
-	return e.key
+func (e *I18nError) Values() map[string]interface{} {
+	return e.values
 }
 
 // Errors translator functions

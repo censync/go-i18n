@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -75,21 +76,23 @@ var (
 //				}
 //			}
 //		}
-func InitFromDir(defaultLocale, translationsPath string, locales ...string) error {
+func InitFromDir(defaultLocale, translationsPath string, locales ...string) (err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	defaultLocale = defaultLocale
+	defLocale = defaultLocale
 	if len(locales) > 0 {
 		availableLocales = locales
 	} else {
-		availableLocales = getFilesFromDir(translationsPath)
+		availableLocales, err = getFilesFromDir(translationsPath)
+		if err != nil {
+			return err
+		}
 	}
 
-	localePath := translationsPath
 	translatorsCollection = make(map[string]*Translator)
 	for _, locale := range availableLocales {
-		file, err := os.Open(localePath + `/` + locale + `.json`)
+		file, err := os.Open(filepath.Join(translationsPath, locale+".json"))
 		if err != nil {
 			return err
 		}
@@ -171,17 +174,17 @@ func (c *DictionaryCollection) getLocales() (locales []string) {
 }
 
 // getFilesFromDir Returns available locales for dictionary
-func getFilesFromDir(path string) (locales []string) {
+func getFilesFromDir(path string) (locales []string, err error) {
 	files, err := os.ReadDir(path)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+	ext := "." + dictExtension
 	for _, file := range files {
 		if !file.IsDir() {
-			suffixLen := len(dictExtension) + 1
-			fNameLen := len(file.Name())
-			if fNameLen > suffixLen && file.Name()[fNameLen-suffixLen+1:] == dictExtension {
-				locales = append(locales, file.Name()[:fNameLen-suffixLen])
+			name := file.Name()
+			if strings.HasSuffix(name, ext) && len(name) > len(ext) {
+				locales = append(locales, strings.TrimSuffix(name, ext))
 			}
 		}
 	}
@@ -191,8 +194,8 @@ func getFilesFromDir(path string) (locales []string) {
 // Get Returns Translator instance, if `locale` translatorsCollection exists.
 // If translatorsCollection does not exist, returns translatorsCollection for default locale.
 func Get(locale string) *Translator {
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 
 	if translatorsCollection == nil {
 		panic("translator not initialized")
@@ -235,15 +238,15 @@ func (tr *Translator) T(section string, key string) string {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	if _, ok := (*tr.localeDictionary)[section]; ok {
-		if entry, ok := (*(*tr.localeDictionary)[section])[key]; ok {
-			return entry
-		} else {
-			return section + `.` + key
-		}
-	} else {
-		return section + `.` + key
+	if tr.localeDictionary == nil {
+		return section + "." + key
 	}
+	if entries, ok := (*tr.localeDictionary)[section]; ok {
+		if entry, ok := (*entries)[key]; ok {
+			return entry
+		}
+	}
+	return section + "." + key
 }
 
 // Tf Returns translated formatted string
@@ -251,23 +254,30 @@ func (tr *Translator) Tf(section string, key string, values M) string {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	if tr, ok := (*(*tr.localeDictionary)[section])[key]; ok {
-		for key, value := range values {
-			switch reflect.TypeOf(value).Kind() {
-			case reflect.String:
-				tr = strings.Replace(tr, key, value.(string), -1)
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				tr = strings.Replace(tr, key, fmt.Sprintf("%d", value), -1)
-			case reflect.Float32, reflect.Float64:
-				tr = strings.Replace(tr, key, fmt.Sprintf("%f", value), -1)
-			default:
-				tr = strings.Replace(tr, key, fmt.Sprintf("%v", value), -1)
-			}
-		}
-		return tr
-	} else {
-		return section + `.` + key
+	if tr.localeDictionary == nil {
+		return section + "." + key
 	}
+	entries, ok := (*tr.localeDictionary)[section]
+	if !ok {
+		return section + "." + key
+	}
+	result, ok := (*entries)[key]
+	if !ok {
+		return section + "." + key
+	}
+	for placeholder, value := range values {
+		switch reflect.TypeOf(value).Kind() {
+		case reflect.String:
+			result = strings.Replace(result, placeholder, value.(string), -1)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			result = strings.Replace(result, placeholder, fmt.Sprintf("%d", value), -1)
+		case reflect.Float32, reflect.Float64:
+			result = strings.Replace(result, placeholder, fmt.Sprintf("%f", value), -1)
+		default:
+			result = strings.Replace(result, placeholder, fmt.Sprintf("%v", value), -1)
+		}
+	}
+	return result
 }
 
 // ErrT Returns translated error
